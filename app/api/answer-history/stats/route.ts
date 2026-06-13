@@ -48,9 +48,8 @@ export async function GET() {
       recent,
     });
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "取得失敗" },
-      { status: 500 }
-    );
+    const msg = error instanceof Error ? error.message : "取得失敗";
+    console.error("[answer-history/stats GET]", msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

@@ -11,10 +11,9 @@ export async function GET() {
     `;
     return NextResponse.json(themes);
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "取得失敗" },
-      { status: 500 }
-    );
+    const msg = error instanceof Error ? error.message : "取得失敗";
+    console.error("[themes GET]", msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 
