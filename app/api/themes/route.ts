@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import sql from "@/lib/db";
+import getDb from "@/lib/db";
 
 export async function GET() {
   try {
+    const sql = getDb();
     const themes = await sql`
       SELECT id, name, created_at
       FROM themes
@@ -19,6 +20,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const sql = getDb();
     const { name } = await req.json();
     if (!name || !name.trim()) {
       return NextResponse.json({ error: "テーマ名は必須です" }, { status: 400 });

@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import sql from "@/lib/db";
+import getDb from "@/lib/db";
 
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const sql = getDb();
     const { id } = await params;
     const numId = Number(id);
     if (isNaN(numId)) {

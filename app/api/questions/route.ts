@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import sql from "@/lib/db";
+import getDb from "@/lib/db";
 
 export async function GET(req: NextRequest) {
   const problemSetId = req.nextUrl.searchParams.get("problemSetId");
@@ -7,6 +7,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "problemSetId は必須です" }, { status: 400 });
   }
   try {
+    const sql = getDb();
     const rows = await sql`
       SELECT id, problem_set_id, question, choice_a, choice_b, choice_c, choice_d, answer, explanation
       FROM questions
@@ -24,6 +25,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const sql = getDb();
     const body = await req.json();
     const { problem_set_id, question, choice_a, choice_b, choice_c, choice_d, answer, explanation } = body;
 

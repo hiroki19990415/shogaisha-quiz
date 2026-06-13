@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import sql from "@/lib/db";
+import getDb from "@/lib/db";
 
 export async function GET() {
   try {
+    const sql = getDb();
     const rows = await sql`
       SELECT
         ah.id,
@@ -30,6 +31,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const sql = getDb();
     const { question_id, is_correct } = await req.json();
     if (question_id == null || is_correct == null) {
       return NextResponse.json(

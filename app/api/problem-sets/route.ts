@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import sql from "@/lib/db";
+import getDb from "@/lib/db";
 
 export async function GET(req: NextRequest) {
   const themeId = req.nextUrl.searchParams.get("themeId");
@@ -7,6 +7,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "themeId は必須です" }, { status: 400 });
   }
   try {
+    const sql = getDb();
     const rows = await sql`
       SELECT
         ps.id,
@@ -31,6 +32,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const sql = getDb();
     const { theme_id, level } = await req.json();
     const validLevels = ["初級", "中級", "上級"];
     if (!theme_id || !validLevels.includes(level)) {
