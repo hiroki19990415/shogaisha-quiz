@@ -14,7 +14,7 @@ type Question = {
   explanation: string | null;
   theme_name?: string;
   level?: string;
-  wrong_count?: number;
+  correct_streak?: number;
 };
 
 type AnswerResult = {
@@ -176,7 +176,11 @@ export default function QuizPanel({
           {activeMode === "weak" && currentQ.theme_name && (
             <p className="text-xs text-red-500 font-semibold">
               {currentQ.theme_name}・{currentQ.level}
-              {currentQ.wrong_count && ` （${currentQ.wrong_count}回不正解）`}
+              {currentQ.correct_streak !== undefined && (
+                <span className="ml-1 text-orange-500">
+                  （あと{2 - currentQ.correct_streak}回連続正解で苦手解除）
+                </span>
+              )}
             </p>
           )}
 

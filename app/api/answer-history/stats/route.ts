@@ -14,9 +14,9 @@ export async function GET() {
     `;
 
     const [weakCount] = await sql`
-      SELECT COUNT(DISTINCT question_id)::int AS weak_count
-      FROM answer_history
-      WHERE is_correct = false
+      SELECT COUNT(*)::int AS weak_count
+      FROM weak_question_status
+      WHERE is_active = true
     `;
 
     const recent = await sql`

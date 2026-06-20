@@ -62,7 +62,17 @@ CREATE INDEX idx_answer_history_question_id ON answer_history(question_id);
 CREATE INDEX idx_answer_history_answered_at ON answer_history(answered_at DESC);
 
 -- =============================================
--- ビュー：苦手問題（is_correct=false の問題を集計）
+-- 苦手問題ステータス管理テーブル
+-- =============================================
+CREATE TABLE weak_question_status (
+  question_id    INTEGER PRIMARY KEY REFERENCES questions(id) ON DELETE CASCADE,
+  correct_streak INTEGER     NOT NULL DEFAULT 0,
+  is_active      BOOLEAN     NOT NULL DEFAULT true,
+  updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- =============================================
+-- ビュー：苦手問題（is_active=true の問題のみ）
 -- =============================================
 CREATE VIEW weak_questions AS
 SELECT
@@ -78,17 +88,14 @@ SELECT
   ps.theme_id,
   t.name           AS theme_name,
   ps.level,
-  COUNT(*)         AS wrong_count,
-  MAX(ah.answered_at) AS last_wrong_at
-FROM answer_history ah
-JOIN questions    q  ON q.id  = ah.question_id
+  wqs.correct_streak,
+  wqs.updated_at   AS last_wrong_at
+FROM weak_question_status wqs
+JOIN questions    q  ON q.id  = wqs.question_id
 JOIN problem_sets ps ON ps.id = q.problem_set_id
 JOIN themes       t  ON t.id  = ps.theme_id
-WHERE ah.is_correct = false
-GROUP BY
-  q.id, q.question, q.choice_a, q.choice_b, q.choice_c, q.choice_d,
-  q.answer, q.explanation, q.problem_set_id, ps.theme_id, t.name, ps.level
-ORDER BY wrong_count DESC, last_wrong_at DESC;
+WHERE wqs.is_active = true
+ORDER BY wqs.updated_at DESC;
 
 -- =============================================
 -- サンプルデータ（動作確認用）
