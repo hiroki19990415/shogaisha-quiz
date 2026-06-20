@@ -14,6 +14,7 @@ type Props = {
   onSelectTheme: (id: number | null) => void;
   selectedProblemSetId: number | null;
   onSelectProblemSet: (id: number | null) => void;
+  onQuestionsChanged?: () => void;
 };
 
 export default function ThemePanel({
@@ -21,6 +22,7 @@ export default function ThemePanel({
   onSelectTheme,
   selectedProblemSetId,
   onSelectProblemSet,
+  onQuestionsChanged,
 }: Props) {
   const [themes, setThemes] = useState<Theme[]>([]);
   const [newName, setNewName] = useState("");
@@ -142,6 +144,7 @@ export default function ThemePanel({
           themeId={selectedThemeId}
           selectedProblemSetId={selectedProblemSetId}
           onSelectProblemSet={onSelectProblemSet}
+          onQuestionsChanged={onQuestionsChanged}
         />
       )}
     </div>

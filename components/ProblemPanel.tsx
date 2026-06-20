@@ -26,6 +26,7 @@ type Props = {
   themeId: number;
   selectedProblemSetId: number | null;
   onSelectProblemSet: (id: number | null) => void;
+  onQuestionsChanged?: () => void;
 };
 
 const LEVELS = ["初級", "中級", "上級"] as const;
@@ -40,12 +41,18 @@ const emptyForm = {
   explanation: "",
 };
 
-export default function ProblemPanel({ themeId, selectedProblemSetId, onSelectProblemSet }: Props) {
+export default function ProblemPanel({
+  themeId,
+  selectedProblemSetId,
+  onSelectProblemSet,
+  onQuestionsChanged,
+}: Props) {
   const [problemSets, setProblemSets] = useState<ProblemSet[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [newLevel, setNewLevel] = useState<string>("初級");
   const [showQuestionForm, setShowQuestionForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -65,14 +72,43 @@ export default function ProblemPanel({ themeId, selectedProblemSetId, onSelectPr
     fetchProblemSets();
     setQuestions([]);
     onSelectProblemSet(null);
+    resetForm();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [themeId]);
 
   useEffect(() => {
     if (selectedProblemSetId) fetchQuestions(selectedProblemSetId);
     else setQuestions([]);
+    resetForm();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedProblemSetId]);
+
+  const resetForm = () => {
+    setForm(emptyForm);
+    setEditingId(null);
+    setShowQuestionForm(false);
+    setError("");
+  };
+
+  const handleFormChange = (field: string, value: string) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  // 問題をクリック → 編集フォームに内容を読み込む
+  const handleEditQuestion = (q: Question) => {
+    setForm({
+      question: q.question,
+      choice_a: q.choice_a,
+      choice_b: q.choice_b,
+      choice_c: q.choice_c,
+      choice_d: q.choice_d,
+      answer: q.answer,
+      explanation: q.explanation ?? "",
+    });
+    setEditingId(q.id);
+    setShowQuestionForm(true);
+    setError("");
+  };
 
   const handleAddProblemSet = async () => {
     const res = await fetch("/api/problem-sets", {
@@ -81,10 +117,6 @@ export default function ProblemPanel({ themeId, selectedProblemSetId, onSelectPr
       body: JSON.stringify({ theme_id: themeId, level: newLevel }),
     });
     if (res.ok) await fetchProblemSets();
-  };
-
-  const handleFormChange = (field: string, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleSaveQuestion = async () => {
@@ -96,22 +128,35 @@ export default function ProblemPanel({ themeId, selectedProblemSetId, onSelectPr
     setSaving(true);
     setError("");
     try {
-      const res = await fetch("/api/questions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          problem_set_id: selectedProblemSetId,
-          ...form,
-        }),
-      });
+      let res: Response;
+
+      if (editingId !== null) {
+        // 既存問題の更新
+        res = await fetch(`/api/questions/${editingId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form),
+        });
+      } else {
+        // 新規問題の作成
+        res = await fetch("/api/questions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            problem_set_id: selectedProblemSetId,
+            ...form,
+          }),
+        });
+      }
+
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "登録に失敗しました");
+        setError(data.error ?? "保存に失敗しました");
       } else {
-        setForm(emptyForm);
-        setShowQuestionForm(false);
+        resetForm();
         await fetchProblemSets();
         await fetchQuestions(selectedProblemSetId);
+        onQuestionsChanged?.();
       }
     } finally {
       setSaving(false);
@@ -162,7 +207,7 @@ export default function ProblemPanel({ themeId, selectedProblemSetId, onSelectPr
         </ul>
       )}
 
-      {/* 問題登録 */}
+      {/* 問題登録・編集エリア */}
       {selectedProblemSetId && (
         <div className="mt-2">
           <div className="flex items-center justify-between mb-1">
@@ -170,16 +215,36 @@ export default function ProblemPanel({ themeId, selectedProblemSetId, onSelectPr
               登録済み問題：{questions.length}問
             </p>
             <button
-              onClick={() => { setShowQuestionForm(!showQuestionForm); setError(""); }}
+              onClick={() => {
+                if (showQuestionForm && editingId === null) {
+                  setShowQuestionForm(false);
+                } else {
+                  resetForm();
+                  setShowQuestionForm(true);
+                }
+              }}
               className="bg-blue-500 text-white px-2 py-0.5 rounded text-xs"
             >
-              {showQuestionForm ? "閉じる" : "+ 問題を追加"}
+              {showQuestionForm && editingId === null ? "閉じる" : "+ 問題を追加"}
             </button>
           </div>
 
-          {/* 問題登録フォーム */}
+          {/* 問題フォーム（新規 or 編集） */}
           {showQuestionForm && (
             <div className="border rounded p-2 bg-gray-50 flex flex-col gap-2 text-xs">
+              {/* 編集中ラベル */}
+              {editingId !== null && (
+                <div className="flex items-center justify-between bg-yellow-50 border border-yellow-300 rounded px-2 py-1">
+                  <span className="text-yellow-700 font-semibold">✏️ 編集中（ID: {editingId}）</span>
+                  <button
+                    onClick={resetForm}
+                    className="text-gray-500 hover:text-gray-700 underline text-xs"
+                  >
+                    新規作成に戻る
+                  </button>
+                </div>
+              )}
+
               <div>
                 <label className="font-semibold">問題文 *</label>
                 <textarea
@@ -226,20 +291,34 @@ export default function ProblemPanel({ themeId, selectedProblemSetId, onSelectPr
               <button
                 onClick={handleSaveQuestion}
                 disabled={saving}
-                className="bg-blue-600 text-white px-3 py-1 rounded disabled:opacity-50"
+                className={`text-white px-3 py-1 rounded disabled:opacity-50 ${
+                  editingId !== null ? "bg-yellow-500 hover:bg-yellow-600" : "bg-blue-600 hover:bg-blue-700"
+                }`}
               >
-                {saving ? "保存中..." : "保存する"}
+                {saving ? "保存中..." : editingId !== null ? "更新する" : "保存する"}
               </button>
             </div>
           )}
 
-          {/* 登録済み問題一覧 */}
+          {/* 登録済み問題一覧（クリックで編集） */}
           {questions.length > 0 && (
             <ul className="mt-2 flex flex-col gap-1">
               {questions.map((q, i) => (
-                <li key={q.id} className="text-xs text-gray-600 border rounded px-2 py-1 bg-white">
-                  Q{i + 1}. {q.question.length > 40 ? q.question.slice(0, 40) + "…" : q.question}
+                <li
+                  key={q.id}
+                  onClick={() => handleEditQuestion(q)}
+                  className={`text-xs border rounded px-2 py-1 cursor-pointer transition-colors ${
+                    editingId === q.id
+                      ? "bg-yellow-50 border-yellow-400 text-yellow-800"
+                      : "bg-white border-gray-200 text-gray-600 hover:bg-blue-50 hover:border-blue-300"
+                  }`}
+                >
+                  <span className="font-semibold">Q{i + 1}.</span>{" "}
+                  {q.question.length > 38 ? q.question.slice(0, 38) + "…" : q.question}
                   <span className="ml-1 text-green-600 font-semibold">（正解:{q.answer}）</span>
+                  {editingId === q.id && (
+                    <span className="ml-1 text-yellow-600 font-semibold">← 編集中</span>
+                  )}
                 </li>
               ))}
             </ul>

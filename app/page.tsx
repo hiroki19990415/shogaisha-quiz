@@ -51,13 +51,17 @@ export default function Home() {
 
   const handleHistoryUpdated = () => setHistoryKey((k) => k + 1);
 
+  // 問題が更新されたらクイズ画面を再取得（keyを変えて再マウント）
+  const [quizRefreshKey, setQuizRefreshKey] = useState(0);
+  const handleQuestionsChanged = () => setQuizRefreshKey((k) => k + 1);
+
   const handleStartWeakQuiz = () => {
     setSelectedProblemSetId(null);
     setAnswerResult(null);
     setQuizMode("weak");
   };
 
-  const quizKey = quizMode === "weak" ? "weak" : String(selectedProblemSetId);
+  const quizKey = quizMode === "weak" ? "weak" : `${selectedProblemSetId}-${quizRefreshKey}`;
 
   return (
     <div className="min-h-screen bg-gray-100 p-4">
@@ -74,6 +78,7 @@ export default function Home() {
             onSelectTheme={handleSelectTheme}
             selectedProblemSetId={selectedProblemSetId}
             onSelectProblemSet={handleSelectProblemSet}
+            onQuestionsChanged={handleQuestionsChanged}
           />
         </div>
 
