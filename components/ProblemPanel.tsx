@@ -56,6 +56,16 @@ export default function ProblemPanel({
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // 一括インポート用state
+  const [showImport, setShowImport] = useState(false);
+  const [importMarkdown, setImportMarkdown] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{
+    imported?: number;
+    parse_errors?: string[];
+    error?: string;
+  } | null>(null);
+
   const fetchProblemSets = async () => {
     const res = await fetch(`/api/problem-sets?themeId=${themeId}`);
     const data = await res.json();
@@ -160,6 +170,32 @@ export default function ProblemPanel({
       }
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleImport = async () => {
+    if (!selectedProblemSetId || !importMarkdown.trim()) return;
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const res = await fetch("/api/questions/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          problem_set_id: selectedProblemSetId,
+          markdown: importMarkdown,
+        }),
+      });
+      const data = await res.json();
+      setImportResult(data);
+      if (res.ok && data.imported > 0) {
+        setImportMarkdown("");
+        await fetchProblemSets();
+        await fetchQuestions(selectedProblemSetId);
+        onQuestionsChanged?.();
+      }
+    } finally {
+      setImporting(false);
     }
   };
 
@@ -299,6 +335,86 @@ export default function ProblemPanel({
               </button>
             </div>
           )}
+
+          {/* マークダウン一括インポート */}
+          <div className="mt-2 border-t pt-2">
+            <button
+              onClick={() => {
+                setShowImport(!showImport);
+                setImportResult(null);
+              }}
+              className="text-xs text-purple-600 underline"
+            >
+              {showImport ? "▲ 一括インポートを閉じる" : "▼ マークダウンで一括登録"}
+            </button>
+
+            {showImport && (
+              <div className="mt-2 flex flex-col gap-2 text-xs">
+                <p className="text-gray-500 leading-relaxed">
+                  Cursorで生成したマークダウンをそのまま貼り付けてください。
+                </p>
+                <details className="bg-gray-50 border rounded p-2">
+                  <summary className="cursor-pointer font-semibold text-gray-600">
+                    フォーマット例を見る
+                  </summary>
+                  <pre className="mt-1 text-gray-500 whitespace-pre-wrap text-xs leading-relaxed">{`## Q1. 問題文をここに書く
+
+- A. 選択肢A
+- B. 選択肢B
+- C. 選択肢C
+- D. 選択肢D
+
+**正解: B**
+**解説:** 解説文をここに書く
+
+---
+
+## Q2. 次の問題文`}</pre>
+                </details>
+
+                <textarea
+                  rows={8}
+                  value={importMarkdown}
+                  onChange={(e) => setImportMarkdown(e.target.value)}
+                  className="w-full border rounded px-2 py-1 font-mono text-xs"
+                  placeholder="## Q1. 問題文&#10;&#10;- A. 選択肢A&#10;- B. 選択肢B&#10;..."
+                />
+
+                {importResult && (
+                  <div className={`rounded px-2 py-1 ${
+                    importResult.imported
+                      ? "bg-green-50 border border-green-300"
+                      : "bg-red-50 border border-red-300"
+                  }`}>
+                    {importResult.imported !== undefined && (
+                      <p className="text-green-700 font-semibold">
+                        ✅ {importResult.imported}問を登録しました
+                      </p>
+                    )}
+                    {importResult.error && (
+                      <p className="text-red-600">{importResult.error}</p>
+                    )}
+                    {importResult.parse_errors && importResult.parse_errors.length > 0 && (
+                      <div className="mt-1">
+                        <p className="text-orange-600 font-semibold">⚠️ 解析エラー：</p>
+                        {importResult.parse_errors.map((e, i) => (
+                          <p key={i} className="text-orange-600">・{e}</p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <button
+                  onClick={handleImport}
+                  disabled={importing || !importMarkdown.trim()}
+                  className="bg-purple-600 text-white px-3 py-1 rounded disabled:opacity-40"
+                >
+                  {importing ? "登録中..." : "一括登録する"}
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* 登録済み問題一覧（クリックで編集） */}
           {questions.length > 0 && (
