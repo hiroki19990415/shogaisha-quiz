@@ -65,6 +65,7 @@ export default function ProblemPanel({
     parse_errors?: string[];
     error?: string;
   } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   const fetchProblemSets = async () => {
     const res = await fetch(`/api/problem-sets?themeId=${themeId}`);
@@ -173,8 +174,8 @@ export default function ProblemPanel({
     }
   };
 
-  const handleImport = async () => {
-    if (!selectedProblemSetId || !importMarkdown.trim()) return;
+  const runImport = async (markdown: string) => {
+    if (!selectedProblemSetId || !markdown.trim()) return;
     setImporting(true);
     setImportResult(null);
     try {
@@ -183,7 +184,7 @@ export default function ProblemPanel({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           problem_set_id: selectedProblemSetId,
-          markdown: importMarkdown,
+          markdown,
         }),
       });
       const data = await res.json();
@@ -197,6 +198,27 @@ export default function ProblemPanel({
     } finally {
       setImporting(false);
     }
+  };
+
+  const handleImport = () => runImport(importMarkdown);
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    if (!file.name.endsWith(".md") && !file.name.endsWith(".txt")) {
+      setImportResult({ error: ".md または .txt ファイルをドロップしてください" });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      setImportMarkdown(text);
+      setShowImport(true);
+      runImport(text);
+    };
+    reader.readAsText(file, "utf-8");
   };
 
   return (
@@ -338,14 +360,33 @@ export default function ProblemPanel({
 
           {/* マークダウン一括インポート */}
           <div className="mt-2 border-t pt-2">
+            {/* ファイルドロップゾーン（常に表示） */}
+            <div
+              onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={handleDrop}
+              className={`flex flex-col items-center justify-center gap-1 border-2 border-dashed rounded-lg py-4 text-xs transition-colors cursor-pointer ${
+                isDragging
+                  ? "border-purple-500 bg-purple-50 text-purple-700"
+                  : "border-gray-300 bg-gray-50 text-gray-400 hover:border-purple-400 hover:bg-purple-50"
+              }`}
+            >
+              <span className="text-2xl">{importing ? "⏳" : "📂"}</span>
+              {importing
+                ? "登録中..."
+                : isDragging
+                ? "ここで離してください"
+                : ".md ファイルをここにドロップ"}
+            </div>
+
             <button
               onClick={() => {
                 setShowImport(!showImport);
                 setImportResult(null);
               }}
-              className="text-xs text-purple-600 underline"
+              className="mt-2 text-xs text-purple-600 underline"
             >
-              {showImport ? "▲ 一括インポートを閉じる" : "▼ マークダウンで一括登録"}
+              {showImport ? "▲ テキスト貼り付けを閉じる" : "▼ テキストをコピペで一括登録"}
             </button>
 
             {showImport && (
@@ -380,31 +421,6 @@ export default function ProblemPanel({
                   placeholder="## Q1. 問題文&#10;&#10;- A. 選択肢A&#10;- B. 選択肢B&#10;..."
                 />
 
-                {importResult && (
-                  <div className={`rounded px-2 py-1 ${
-                    importResult.imported
-                      ? "bg-green-50 border border-green-300"
-                      : "bg-red-50 border border-red-300"
-                  }`}>
-                    {importResult.imported !== undefined && (
-                      <p className="text-green-700 font-semibold">
-                        ✅ {importResult.imported}問を登録しました
-                      </p>
-                    )}
-                    {importResult.error && (
-                      <p className="text-red-600">{importResult.error}</p>
-                    )}
-                    {importResult.parse_errors && importResult.parse_errors.length > 0 && (
-                      <div className="mt-1">
-                        <p className="text-orange-600 font-semibold">⚠️ 解析エラー：</p>
-                        {importResult.parse_errors.map((e, i) => (
-                          <p key={i} className="text-orange-600">・{e}</p>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
                 <button
                   onClick={handleImport}
                   disabled={importing || !importMarkdown.trim()}
@@ -412,6 +428,32 @@ export default function ProblemPanel({
                 >
                   {importing ? "登録中..." : "一括登録する"}
                 </button>
+              </div>
+            )}
+
+            {/* 結果表示（ドロップ・貼り付け共通） */}
+            {importResult && (
+              <div className={`mt-2 rounded px-2 py-1 text-xs ${
+                importResult.imported
+                  ? "bg-green-50 border border-green-300"
+                  : "bg-red-50 border border-red-300"
+              }`}>
+                {importResult.imported !== undefined && (
+                  <p className="text-green-700 font-semibold">
+                    ✅ {importResult.imported}問を登録しました
+                  </p>
+                )}
+                {importResult.error && (
+                  <p className="text-red-600">{importResult.error}</p>
+                )}
+                {importResult.parse_errors && importResult.parse_errors.length > 0 && (
+                  <div className="mt-1">
+                    <p className="text-orange-600 font-semibold">⚠️ 解析エラー：</p>
+                    {importResult.parse_errors.map((e, i) => (
+                      <p key={i} className="text-orange-600">・{e}</p>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
