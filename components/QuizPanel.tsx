@@ -30,6 +30,7 @@ type Props = {
   mode?: Mode;
   onAnswered: (result: AnswerResult) => void;
   onHistoryUpdated: () => void;
+  onNext?: () => void;
 };
 
 const CHOICES = ["A", "B", "C", "D"] as const;
@@ -39,6 +40,7 @@ export default function QuizPanel({
   mode = "normal",
   onAnswered,
   onHistoryUpdated,
+  onNext,
 }: Props) {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -98,6 +100,7 @@ export default function QuizPanel({
   };
 
   const handleNext = () => {
+    onNext?.();
     if (currentIndex + 1 >= questions.length) {
       setFinished(true);
     } else {
