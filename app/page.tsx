@@ -28,13 +28,12 @@ type AnswerResult = {
 };
 
 type QuizMode = "normal" | "weak";
-type MobileTab = "manage" | "quiz" | "explain" | "history";
+type MobileTab = "quiz" | "explain" | "history";
 
 const MOBILE_TABS: { id: MobileTab; label: string }[] = [
-  { id: "manage", label: "① 管理" },
-  { id: "quiz",   label: "② クイズ" },
-  { id: "explain",label: "③ 解説" },
-  { id: "history",label: "④ 履歴" },
+  { id: "quiz",    label: "クイズ" },
+  { id: "explain", label: "解説" },
+  { id: "history", label: "履歴" },
 ];
 
 export default function Home() {
@@ -86,7 +85,8 @@ export default function Home() {
 
   const quizKey = quizMode === "weak" ? "weak" : `${selectedProblemSetId}-${quizRefreshKey}`;
 
-  const quizPanel = (
+  // PC用（セレクターなし）
+  const pcQuizPanel = (
     <QuizPanel
       key={quizKey}
       problemSetId={selectedProblemSetId ?? undefined}
@@ -94,6 +94,22 @@ export default function Home() {
       onAnswered={handleAnswered}
       onHistoryUpdated={handleHistoryUpdated}
       onNext={handleNext}
+    />
+  );
+
+  // モバイル用（テーマ・問題集セレクター付き）
+  const mobileQuizPanel = (
+    <QuizPanel
+      key={`mobile-${quizKey}`}
+      problemSetId={selectedProblemSetId ?? undefined}
+      mode={quizMode}
+      onAnswered={handleAnswered}
+      onHistoryUpdated={handleHistoryUpdated}
+      onNext={handleNext}
+      showSelector={true}
+      selectedThemeId={selectedThemeId}
+      onMobileSelectTheme={handleSelectTheme}
+      onMobileSelectProblemSet={handleSelectProblemSet}
     />
   );
 
@@ -147,8 +163,7 @@ export default function Home() {
 
         {/* タブコンテンツ */}
         <div className="flex-1 bg-white p-4 overflow-y-auto">
-          {mobileTab === "manage"  && themePanel}
-          {mobileTab === "quiz"    && quizPanel}
+          {mobileTab === "quiz"    && mobileQuizPanel}
           {mobileTab === "explain" && explanationPanel}
           {mobileTab === "history" && historyPanel}
         </div>
@@ -160,7 +175,7 @@ export default function Home() {
           {themePanel}
         </div>
         <div className="bg-white rounded shadow p-3 flex flex-col">
-          {quizPanel}
+          {pcQuizPanel}
         </div>
         <div className="bg-white rounded shadow p-3">
           {explanationPanel}

@@ -25,12 +25,20 @@ type AnswerResult = {
 
 type Mode = "normal" | "weak";
 
+type Theme = { id: number; name: string };
+type ProblemSet = { id: number; level: string; question_count: number };
+
 type Props = {
   problemSetId?: number;
   mode?: Mode;
   onAnswered: (result: AnswerResult) => void;
   onHistoryUpdated: () => void;
   onNext?: () => void;
+  // モバイル用セレクター
+  showSelector?: boolean;
+  selectedThemeId?: number | null;
+  onMobileSelectTheme?: (id: number | null) => void;
+  onMobileSelectProblemSet?: (id: number | null) => void;
 };
 
 const CHOICES = ["A", "B", "C", "D"] as const;
@@ -41,6 +49,10 @@ export default function QuizPanel({
   onAnswered,
   onHistoryUpdated,
   onNext,
+  showSelector = false,
+  selectedThemeId,
+  onMobileSelectTheme,
+  onMobileSelectProblemSet,
 }: Props) {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -49,6 +61,29 @@ export default function QuizPanel({
   const [loading, setLoading] = useState(true);
   const [finished, setFinished] = useState(false);
   const [activeMode, setActiveMode] = useState<Mode>(mode);
+
+  // モバイルセレクター用
+  const [themes, setThemes] = useState<Theme[]>([]);
+  const [mobileProblemSets, setMobileProblemSets] = useState<ProblemSet[]>([]);
+
+  // テーマ一覧取得（セレクター表示時のみ）
+  useEffect(() => {
+    if (!showSelector) return;
+    fetch("/api/themes")
+      .then((r) => r.json())
+      .then((data) => setThemes(Array.isArray(data) ? data : []));
+  }, [showSelector]);
+
+  // 問題集一覧取得（テーマ選択時）
+  useEffect(() => {
+    if (!showSelector || !selectedThemeId) {
+      setMobileProblemSets([]);
+      return;
+    }
+    fetch(`/api/problem-sets?themeId=${selectedThemeId}`)
+      .then((r) => r.json())
+      .then((data) => setMobileProblemSets(Array.isArray(data) ? data : []));
+  }, [showSelector, selectedThemeId]);
 
   const loadQuestions = async (m: Mode) => {
     setLoading(true);
@@ -65,6 +100,9 @@ export default function QuizPanel({
         const res = await fetch(`/api/questions?problemSetId=${problemSetId}`);
         const data = await res.json();
         setQuestions(Array.isArray(data) ? data : []);
+      } else {
+        setQuestions([]);
+        setLoading(false);
       }
     } finally {
       setLoading(false);
@@ -125,9 +163,9 @@ export default function QuizPanel({
 
   return (
     <div className="flex flex-col gap-3 h-full">
+      {/* ヘッダー */}
       <div className="flex items-center justify-between border-b pb-1">
         <h2 className="font-bold text-lg">② クイズ画面</h2>
-        {/* モード切替タブ */}
         <div className="flex gap-1">
           <button
             onClick={() => handleModeSwitch("normal")}
@@ -152,10 +190,55 @@ export default function QuizPanel({
         </div>
       </div>
 
+      {/* モバイル専用：テーマ・問題集セレクター */}
+      {showSelector && activeMode === "normal" && (
+        <div className="flex flex-col gap-2 bg-blue-50 border border-blue-200 rounded-lg p-3">
+          <select
+            value={selectedThemeId ?? ""}
+            onChange={(e) => {
+              const id = e.target.value ? Number(e.target.value) : null;
+              onMobileSelectTheme?.(id);
+              onMobileSelectProblemSet?.(null);
+            }}
+            className="border border-gray-300 rounded px-2 py-2 text-sm bg-white w-full"
+          >
+            <option value="">📚 テーマを選ぶ</option>
+            {themes.map((t) => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </select>
+
+          {selectedThemeId && (
+            <select
+              value={problemSetId ?? ""}
+              onChange={(e) => {
+                const id = e.target.value ? Number(e.target.value) : null;
+                onMobileSelectProblemSet?.(id);
+              }}
+              className="border border-gray-300 rounded px-2 py-2 text-sm bg-white w-full"
+            >
+              <option value="">📝 問題集を選ぶ</option>
+              {mobileProblemSets.map((ps) => (
+                <option key={ps.id} value={ps.id}>
+                  {ps.level}（{ps.question_count}問）
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+      )}
+
+      {/* クイズ本体 */}
       {loading ? (
         <p className="text-gray-400 text-sm">読み込み中...</p>
       ) : activeMode === "normal" && !problemSetId ? (
-        <p className="text-gray-400 text-sm">← テーマ → 問題集を選択してください</p>
+        <div className="text-center py-8 text-gray-400">
+          {showSelector ? (
+            <p className="text-sm">上のメニューからテーマと問題集を選んでください</p>
+          ) : (
+            <p className="text-sm">← テーマ → 問題集を選択してください</p>
+          )}
+        </div>
       ) : questions.length === 0 ? (
         <p className="text-gray-400 text-sm">
           {activeMode === "weak"
