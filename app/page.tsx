@@ -43,6 +43,7 @@ export default function Home() {
   const [historyKey, setHistoryKey] = useState(0);
   const [quizMode, setQuizMode] = useState<QuizMode>("normal");
   const [quizRefreshKey, setQuizRefreshKey] = useState(0);
+  const [nextTrigger, setNextTrigger] = useState(0);
 
   // モバイル用タブ
   const [mobileTab, setMobileTab] = useState<MobileTab>("quiz");
@@ -52,12 +53,14 @@ export default function Home() {
     setSelectedProblemSetId(null);
     setAnswerResult(null);
     setQuizMode("normal");
+    setNextTrigger(0);
   };
 
   const handleSelectProblemSet = (id: number | null) => {
     setSelectedProblemSetId(id);
     setAnswerResult(null);
     setQuizMode("normal");
+    setNextTrigger(0);
     // 問題集を選んだらクイズタブへ移動（モバイル）
     setMobileTab("quiz");
   };
@@ -69,18 +72,19 @@ export default function Home() {
     setSelectedProblemSetId(null);
     setAnswerResult(null);
     setQuizMode("weak");
+    setNextTrigger(0);
     setMobileTab("quiz");
   };
 
-  // 回答後 → 解説タブへ自動移動（モバイル）
+  // 回答後 → 解説タブバッジを表示しつつクイズタブに留まる
   const handleAnswered = (result: AnswerResult) => {
     setAnswerResult(result);
-    setMobileTab("explain");
   };
 
-  // 次の問題へ → クイズタブへ自動移動（モバイル）
-  const handleNext = () => {
+  // 解説パネルの「次の問題へ」ボタン → クイズタブへ戻り、次問に進む（モバイル）
+  const handleNextFromExplanation = () => {
     setMobileTab("quiz");
+    setNextTrigger((t) => t + 1);
   };
 
   const quizKey = quizMode === "weak" ? "weak" : `${selectedProblemSetId}-${quizRefreshKey}`;
@@ -93,7 +97,7 @@ export default function Home() {
       mode={quizMode}
       onAnswered={handleAnswered}
       onHistoryUpdated={handleHistoryUpdated}
-      onNext={handleNext}
+      nextTrigger={nextTrigger}
     />
   );
 
@@ -105,7 +109,7 @@ export default function Home() {
       mode={quizMode}
       onAnswered={handleAnswered}
       onHistoryUpdated={handleHistoryUpdated}
-      onNext={handleNext}
+      nextTrigger={nextTrigger}
       showSelector={true}
       selectedThemeId={selectedThemeId}
       onMobileSelectTheme={handleSelectTheme}
@@ -123,7 +127,9 @@ export default function Home() {
     />
   );
 
-  const explanationPanel = <ExplanationPanel result={answerResult} />;
+  const explanationPanel = (
+    <ExplanationPanel result={answerResult} onNext={handleNextFromExplanation} />
+  );
 
   const historyPanel = (
     <HistoryPanel
@@ -161,11 +167,17 @@ export default function Home() {
           ))}
         </div>
 
-        {/* タブコンテンツ */}
+        {/* タブコンテンツ（常時マウントしてQuizPanel状態を保持） */}
         <div className="flex-1 bg-white p-4 overflow-y-auto">
-          {mobileTab === "quiz"    && mobileQuizPanel}
-          {mobileTab === "explain" && explanationPanel}
-          {mobileTab === "history" && historyPanel}
+          <div className={mobileTab === "quiz" ? "" : "hidden"}>
+            {mobileQuizPanel}
+          </div>
+          <div className={mobileTab === "explain" ? "" : "hidden"}>
+            <ExplanationPanel result={answerResult} onNext={handleNextFromExplanation} />
+          </div>
+          <div className={mobileTab === "history" ? "" : "hidden"}>
+            {historyPanel}
+          </div>
         </div>
       </div>
 
