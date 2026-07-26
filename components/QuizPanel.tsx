@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Question = {
   id: number;
@@ -34,6 +34,7 @@ type Props = {
   onAnswered: (result: AnswerResult) => void;
   onHistoryUpdated: () => void;
   onNext?: () => void;
+  nextTrigger?: number;
   // モバイル用セレクター
   showSelector?: boolean;
   selectedThemeId?: number | null;
@@ -49,6 +50,7 @@ export default function QuizPanel({
   onAnswered,
   onHistoryUpdated,
   onNext,
+  nextTrigger,
   showSelector = false,
   selectedThemeId,
   onMobileSelectTheme,
@@ -147,6 +149,16 @@ export default function QuizPanel({
       setAnswered(false);
     }
   };
+
+  // 外部（解説パネルの「次の問題へ」ボタン）からの呼び出しに対応
+  const handleNextRef = useRef(handleNext);
+  handleNextRef.current = handleNext;
+  useEffect(() => {
+    if ((nextTrigger ?? 0) > 0) {
+      handleNextRef.current();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nextTrigger]);
 
   const handleRestart = () => {
     loadQuestions(activeMode);
@@ -313,7 +325,7 @@ export default function QuizPanel({
           </div>
 
           {/* ボタン */}
-          <div className="flex gap-2 mt-auto">
+          <div className="flex gap-2">
             {!answered ? (
               <button
                 onClick={handleAnswer}
