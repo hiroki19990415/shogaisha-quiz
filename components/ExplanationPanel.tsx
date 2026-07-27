@@ -17,9 +17,10 @@ type Props = {
     isCorrect: boolean;
     question: Question;
   } | null;
+  onNext?: () => void;
 };
 
-export default function ExplanationPanel({ result }: Props) {
+export default function ExplanationPanel({ result, onNext }: Props) {
   if (!result || !result.selected) {
     return (
       <div>
@@ -75,6 +76,15 @@ export default function ExplanationPanel({ result }: Props) {
           <p className="font-semibold text-yellow-800 mb-1">解説</p>
           <p className="text-gray-700">{question.explanation}</p>
         </div>
+      )}
+
+      {onNext && (
+        <button
+          onClick={onNext}
+          className="w-full bg-gray-700 text-white py-2 rounded font-semibold text-sm mt-2"
+        >
+          次の問題へ →
+        </button>
       )}
     </div>
   );
