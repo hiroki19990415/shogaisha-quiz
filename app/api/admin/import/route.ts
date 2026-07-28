@@ -14,10 +14,11 @@ const VALID_LEVELS: Level[] = ["初級", "中級", "上級"];
 
 function parseFilename(
   filename: string
-): { themeName: string; level: Level } | null {
+): { themeName: string; level: Level; sortOrder: number } | null {
   const match = filename.match(/^(\d+_.+)_(初級|中級|上級)\.md$/);
   if (!match) return null;
-  return { themeName: match[1], level: match[2] as Level };
+  const sortOrder = parseInt(match[1].split("_")[0], 10) || 0;
+  return { themeName: match[1], level: match[2] as Level, sortOrder };
 }
 
 export async function POST(req: NextRequest) {
@@ -54,16 +55,13 @@ export async function POST(req: NextRequest) {
           };
         }
 
-        const { themeName, level } = parsed;
+        const { themeName, level, sortOrder } = parsed;
 
-        // テーマをupsert（UNIQUE制約あり）
+        // テーマをupsert（UNIQUE制約あり）。sort_order はファイル名先頭の数字を使用
         const themeResult = await sql`
           INSERT INTO themes (name, sort_order)
-          VALUES (
-            ${themeName},
-            COALESCE((SELECT MAX(sort_order) FROM themes), 0) + 1
-          )
-          ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
+          VALUES (${themeName}, ${sortOrder})
+          ON CONFLICT (name) DO UPDATE SET sort_order = EXCLUDED.sort_order
           RETURNING id
         `;
         const themeId = themeResult[0].id as number;
