@@ -167,8 +167,11 @@ export default function ThemePanel({
                   <input
                     type="checkbox"
                     checked={selectedIds.has(t.id)}
-                    onChange={() => toggleSelect(t.id)}
-                    onClick={(e) => e.stopPropagation()}
+                    onChange={() => {}}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleSelect(t.id, idx, e.shiftKey);
+                    }}
                     className="mr-2 flex-shrink-0"
                   />
                 )}
