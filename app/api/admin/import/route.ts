@@ -58,8 +58,11 @@ export async function POST(req: NextRequest) {
 
         // テーマをupsert（UNIQUE制約あり）
         const themeResult = await sql`
-          INSERT INTO themes (name)
-          VALUES (${themeName})
+          INSERT INTO themes (name, sort_order)
+          VALUES (
+            ${themeName},
+            COALESCE((SELECT MAX(sort_order) FROM themes), 0) + 1
+          )
           ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
           RETURNING id
         `;

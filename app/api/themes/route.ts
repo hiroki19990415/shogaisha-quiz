@@ -5,9 +5,9 @@ export async function GET() {
   try {
     const sql = getDb();
     const themes = await sql`
-      SELECT id, name, created_at
+      SELECT id, name, created_at, sort_order
       FROM themes
-      ORDER BY created_at DESC
+      ORDER BY sort_order ASC, created_at ASC
     `;
     return NextResponse.json(themes);
   } catch (error) {
@@ -25,8 +25,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "テーマ名は必須です" }, { status: 400 });
     }
     const result = await sql`
-      INSERT INTO themes (name)
-      VALUES (${name.trim()})
+      INSERT INTO themes (name, sort_order)
+      VALUES (
+        ${name.trim()},
+        COALESCE((SELECT MAX(sort_order) FROM themes), 0) + 1
+      )
       RETURNING id, name, created_at
     `;
     return NextResponse.json(result[0], { status: 201 });
