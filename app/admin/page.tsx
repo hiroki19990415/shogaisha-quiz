@@ -272,6 +272,13 @@ export default function AdminImportPage() {
 
   const clearAll = () => setFiles([]);
 
+  // DBチェック待ちをスキップしてpendingへ強制移行
+  const forceSkipChecking = () => {
+    setFiles((prev) =>
+      prev.map((f) => (f.status === "checking" ? { ...f, status: "pending" } : f))
+    );
+  };
+
   // 取り込みボタン表示用カウント
   const activeTargets = files.filter(
     (f) =>
@@ -458,6 +465,16 @@ export default function AdminImportPage() {
                 すべて削除
               </button>
             </div>
+
+            {/* DBチェック中のファイルがある場合のスキップボタン */}
+            {files.some((f) => f.status === "checking") && (
+              <button
+                onClick={forceSkipChecking}
+                className="w-full py-2 text-xs text-slate-500 hover:text-slate-700 border border-dashed border-slate-300 rounded-lg transition-colors"
+              >
+                DBチェックをスキップして取り込みへ進む
+              </button>
+            )}
 
             {/* ファイルカード一覧 */}
             {files.map((file) => (
