@@ -25,12 +25,10 @@ export default function ThemePanel({
   onQuestionsChanged,
 }: Props) {
   const [themes, setThemes] = useState<Theme[]>([]);
-  const [newName, setNewName] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [lastSelectedIdx, setLastSelectedIdx] = useState<number | null>(null);
 
   const fetchThemes = async () => {
     const res = await fetch("/api/themes");
@@ -41,31 +39,6 @@ export default function ThemePanel({
   useEffect(() => {
     fetchThemes();
   }, []);
-
-  const handleAdd = async () => {
-    if (!newName.trim()) {
-      setError("テーマ名を入力してください");
-      return;
-    }
-    setLoading(true);
-    setError("");
-    try {
-      const res = await fetch("/api/themes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newName.trim() }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? "登録に失敗しました");
-      } else {
-        setNewName("");
-        await fetchThemes();
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleDelete = async (id: number) => {
     if (!confirm("このテーマを削除しますか？（関連する問題集・問題も削除されます）")) return;
@@ -82,15 +55,26 @@ export default function ThemePanel({
   const toggleSelectMode = () => {
     setSelectMode((v) => !v);
     setSelectedIds(new Set());
+    setLastSelectedIdx(null);
   };
 
-  const toggleSelect = (id: number) => {
+  const toggleSelect = (id: number, idx: number, shiftKey: boolean) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (shiftKey && lastSelectedIdx !== null) {
+        // Shift+クリックで範囲選択
+        const from = Math.min(lastSelectedIdx, idx);
+        const to = Math.max(lastSelectedIdx, idx);
+        for (let i = from; i <= to; i++) {
+          next.add(themes[i].id);
+        }
+      } else {
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+      }
       return next;
     });
+    setLastSelectedIdx(idx);
   };
 
   const handleBulkDelete = async () => {
@@ -127,29 +111,6 @@ export default function ThemePanel({
   return (
     <div className="flex flex-col gap-4">
       <h2 className="font-bold text-lg border-b pb-1">① テーマ管理</h2>
-
-      {/* テーマ追加 */}
-      <div>
-        <p className="text-sm font-semibold mb-1">テーマを追加</p>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-            placeholder="例：補装具"
-            className="flex-1 border rounded px-2 py-1 text-sm"
-          />
-          <button
-            onClick={handleAdd}
-            disabled={loading}
-            className="bg-blue-600 text-white px-3 py-1 rounded text-sm disabled:opacity-50"
-          >
-            追加
-          </button>
-        </div>
-        {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
-      </div>
 
       {/* テーマ一覧 */}
       <div>
@@ -196,9 +157,9 @@ export default function ThemePanel({
                     ? "bg-blue-100 border-blue-400 cursor-pointer"
                     : "bg-white border-gray-200 hover:bg-gray-50 cursor-pointer"
                 }`}
-                onClick={() =>
+                onClick={(e) =>
                   selectMode
-                    ? toggleSelect(t.id)
+                    ? toggleSelect(t.id, idx, e.shiftKey)
                     : onSelectTheme(selectedThemeId === t.id ? null : t.id)
                 }
               >
