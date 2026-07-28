@@ -140,9 +140,17 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <h1 className="text-lg font-bold text-gray-800 px-4 pt-4 pb-2">
-        障害者総合支援法 クイズ学習ツール
-      </h1>
+      <div className="flex items-center justify-between px-4 pt-4 pb-2">
+        <h1 className="text-lg font-bold text-gray-800">
+          障害者総合支援法 クイズ学習ツール
+        </h1>
+        <a
+          href="/admin"
+          className="text-xs text-gray-400 hover:text-blue-600 transition-colors"
+        >
+          問題管理
+        </a>
+      </div>
 
       {/* ===== モバイルレイアウト（md未満） ===== */}
       <div className="md:hidden flex flex-col min-h-screen">
