@@ -48,7 +48,7 @@ const LEVEL_BADGE: Record<Level, string> = {
 function parseFilename(
   filename: string
 ): { themeName: string; level: Level } | null {
-  const match = filename.match(/^\d+_(.+)_(初級|中級|上級)\.md$/);
+  const match = filename.match(/^(\d+_.+)_(初級|中級|上級)\.md$/);
   if (!match) return null;
   return { themeName: match[1], level: match[2] as Level };
 }
