@@ -128,13 +128,17 @@ export default function AdminImportPage() {
 
     if (toCheck.length > 0) {
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 12000);
         const res = await fetch("/api/admin/preview", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             files: toCheck.map((f) => ({ filename: f.filename })),
           }),
+          signal: controller.signal,
         });
+        clearTimeout(timeoutId);
         const data = await res.json();
 
         type PreviewResult = { filename: string; existingCount: number };
