@@ -76,9 +76,10 @@ export default function Home() {
     setMobileTab("quiz");
   };
 
-  // 回答後 → 解説タブバッジを表示しつつクイズタブに留まる
+  // 回答後 → 解説タブへ自動遷移（モバイル）
   const handleAnswered = (result: AnswerResult) => {
     setAnswerResult(result);
+    setMobileTab("explain");
   };
 
   // 解説パネルの「次の問題へ」ボタン → クイズタブへ戻り、次問に進む（モバイル）

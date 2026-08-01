@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
       LEFT JOIN questions q ON q.problem_set_id = ps.id
       WHERE ps.theme_id = ${Number(themeId)}
       GROUP BY ps.id
-      ORDER BY ps.created_at ASC
+      ORDER BY CASE ps.level WHEN '初級' THEN 1 WHEN '中級' THEN 2 WHEN '上級' THEN 3 ELSE 4 END
     `;
     return NextResponse.json(rows);
   } catch (error) {
