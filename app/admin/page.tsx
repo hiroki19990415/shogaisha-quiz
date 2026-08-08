@@ -9,6 +9,11 @@ import {
 // ----------------------------------------------------------------
 // 型定義
 // ----------------------------------------------------------------
+type Category = {
+  id: number;
+  name: string;
+};
+
 type Level = "初級" | "中級" | "上級";
 type FileStatus =
   | "checking"   // DBの既存状態を確認中
@@ -62,6 +67,20 @@ export default function AdminImportPage() {
   const [isPageDragging, setIsPageDragging] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch("/api/categories")
+      .then((r) => r.json())
+      .then((data: Category[]) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setCategories(data);
+          setSelectedCategoryId(data[0].id);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const onDragEnter = (e: DragEvent) => {
@@ -210,6 +229,7 @@ export default function AdminImportPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          categoryId: selectedCategoryId,
           files: targets.map((f) => ({
             filename: f.filename,
             content: f.content,
@@ -376,6 +396,41 @@ export default function AdminImportPage() {
             </code>{" "}
             の形式にしてください。
           </p>
+        </div>
+
+        {/* 大テーマ（カテゴリ）選択 */}
+        <div className="mb-6 p-4 bg-white rounded-xl border border-slate-200">
+          <label className="block text-sm font-semibold text-slate-700 mb-2">
+            取り込み先の大テーマ
+          </label>
+          {categories.length === 0 ? (
+            <p className="text-sm text-slate-400">
+              大テーマが登録されていません。先にメイン画面で大テーマを作成してください。
+            </p>
+          ) : (
+            <div className="flex items-center gap-3">
+              <select
+                value={selectedCategoryId ?? ""}
+                onChange={(e) =>
+                  setSelectedCategoryId(e.target.value ? Number(e.target.value) : null)
+                }
+                className="flex-1 text-sm border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-400 bg-white"
+              >
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+                <option value="">（未分類）</option>
+              </select>
+              <a
+                href="/"
+                className="text-xs text-blue-500 hover:text-blue-700 whitespace-nowrap"
+              >
+                大テーマを管理 →
+              </a>
+            </div>
+          )}
         </div>
 
         {/* ドロップゾーン */}

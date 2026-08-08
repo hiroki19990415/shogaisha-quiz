@@ -25,6 +25,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const files: FileEntry[] = body?.files;
+    const categoryId: number | null = body?.categoryId != null ? Number(body.categoryId) : null;
 
     if (!Array.isArray(files) || files.length === 0) {
       return NextResponse.json(
@@ -57,11 +58,13 @@ export async function POST(req: NextRequest) {
 
         const { themeName, level, sortOrder } = parsed;
 
-        // テーマをupsert（UNIQUE制約あり）。sort_order はファイル名先頭の数字を使用
+        // テーマをupsert（UNIQUE制約あり）。sort_order はファイル名先頭の数字、category_id を紐付け
         const themeResult = await sql`
-          INSERT INTO themes (name, sort_order)
-          VALUES (${themeName}, ${sortOrder})
-          ON CONFLICT (name) DO UPDATE SET sort_order = EXCLUDED.sort_order
+          INSERT INTO themes (name, sort_order, category_id)
+          VALUES (${themeName}, ${sortOrder}, ${categoryId})
+          ON CONFLICT (name) DO UPDATE
+            SET sort_order  = EXCLUDED.sort_order,
+                category_id = COALESCE(themes.category_id, EXCLUDED.category_id)
           RETURNING id
         `;
         const themeId = themeResult[0].id as number;

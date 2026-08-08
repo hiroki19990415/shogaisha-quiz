@@ -13,10 +13,10 @@ export async function DELETE(
       return NextResponse.json({ error: "無効なID" }, { status: 400 });
     }
     const result = await sql`
-      DELETE FROM themes WHERE id = ${numId} RETURNING id
+      DELETE FROM categories WHERE id = ${numId} RETURNING id
     `;
     if (result.length === 0) {
-      return NextResponse.json({ error: "テーマが見つかりません" }, { status: 404 });
+      return NextResponse.json({ error: "大テーマが見つかりません" }, { status: 404 });
     }
     return NextResponse.json({ deleted: true, id: numId });
   } catch (error) {
@@ -41,27 +41,23 @@ export async function PATCH(
 
     const body = await req.json();
 
-    // カテゴリ変更
-    if ("categoryId" in body) {
-      const catId = body.categoryId != null ? Number(body.categoryId) : null;
+    // 名前変更
+    if (body.name !== undefined) {
+      const trimmed = String(body.name).trim();
+      if (!trimmed) {
+        return NextResponse.json({ error: "大テーマ名は必須です" }, { status: 400 });
+      }
       const result = await sql`
-        UPDATE themes
-        SET
-          category_id = ${catId},
-          sort_order = COALESCE(
-            (SELECT MAX(sort_order) FROM themes WHERE category_id IS NOT DISTINCT FROM ${catId} AND id != ${numId}),
-            0
-          ) + 1
-        WHERE id = ${numId}
-        RETURNING id, name, sort_order, category_id
+        UPDATE categories SET name = ${trimmed} WHERE id = ${numId}
+        RETURNING id, name, sort_order, created_at
       `;
       if (result.length === 0) {
-        return NextResponse.json({ error: "テーマが見つかりません" }, { status: 404 });
+        return NextResponse.json({ error: "大テーマが見つかりません" }, { status: 404 });
       }
       return NextResponse.json(result[0]);
     }
 
-    // 並び替え（同一カテゴリ内）
+    // 並び替え
     const { direction } = body;
     if (direction !== "up" && direction !== "down") {
       return NextResponse.json(
@@ -70,42 +66,29 @@ export async function PATCH(
       );
     }
 
-    // 対象テーマの category_id を取得
-    const targetRows = await sql`
-      SELECT id, category_id FROM themes WHERE id = ${numId}
-    `;
-    if (targetRows.length === 0) {
-      return NextResponse.json({ error: "テーマが見つかりません" }, { status: 404 });
-    }
-    const categoryId = targetRows[0].category_id as number | null;
-
-    // 同一カテゴリのテーマを sort_order 順で取得
-    const themes = await sql`
-      SELECT id, sort_order
-      FROM themes
-      WHERE category_id IS NOT DISTINCT FROM ${categoryId}
-      ORDER BY sort_order ASC, created_at ASC
+    const categories = await sql`
+      SELECT id, sort_order FROM categories ORDER BY sort_order ASC, created_at ASC
     `;
 
     // sort_order を正規化
     await Promise.all(
-      themes.map((t, i) =>
-        sql`UPDATE themes SET sort_order = ${i + 1} WHERE id = ${t.id}`
+      categories.map((c, i) =>
+        sql`UPDATE categories SET sort_order = ${i + 1} WHERE id = ${c.id}`
       )
     );
 
-    const idx = themes.findIndex((t) => t.id === numId);
+    const idx = categories.findIndex((c) => c.id === numId);
     if (idx === -1) {
-      return NextResponse.json({ error: "テーマが見つかりません" }, { status: 404 });
+      return NextResponse.json({ error: "大テーマが見つかりません" }, { status: 404 });
     }
 
     const swapIdx = direction === "up" ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= themes.length) {
+    if (swapIdx < 0 || swapIdx >= categories.length) {
       return NextResponse.json({ message: "移動不要（端にいます）" });
     }
 
-    await sql`UPDATE themes SET sort_order = ${swapIdx + 1} WHERE id = ${themes[idx].id}`;
-    await sql`UPDATE themes SET sort_order = ${idx + 1} WHERE id = ${themes[swapIdx].id}`;
+    await sql`UPDATE categories SET sort_order = ${swapIdx + 1} WHERE id = ${categories[idx].id}`;
+    await sql`UPDATE categories SET sort_order = ${idx + 1} WHERE id = ${categories[swapIdx].id}`;
 
     return NextResponse.json({ ok: true });
   } catch (error) {

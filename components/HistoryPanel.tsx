@@ -33,7 +33,13 @@ export default function HistoryPanel({ refreshKey, onStartWeakQuiz }: Props) {
     setLoading(true);
     fetch("/api/answer-history/stats")
       .then((r) => r.json())
-      .then((data) => setStats(data))
+      .then((data) => {
+        // APIがエラーを返した場合は無視する
+        if (data && typeof data.total === "number") {
+          setStats(data);
+        }
+      })
+      .catch(() => {/* DB接続エラー等は無視 */})
       .finally(() => setLoading(false));
   }, [refreshKey]);
 
